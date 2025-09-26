@@ -7,34 +7,42 @@ class HelmetControlScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final helmet = Provider.of<HelmetProvider>(context);
+    final helmetProvider = Provider.of<HelmetProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text("Helmet Control")),
+      appBar: AppBar(
+        title: const Text('Helmet Control'),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Connection: ${helmet.connectionStatus}'),
-            Text('Last Command: ${helmet.lastCommand}'),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 10,
+            Text('Connection: ${helmetProvider.connectionStatus}',
+                style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 10),
+            Text('Last Command: ${helmetProvider.lastCommand}',
+                style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 30),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: helmet.connect,
+                  onPressed: () => helmetProvider.send('pair'),
                   child: const Text('Pair'),
                 ),
+                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => helmet.send("start"),
+                  onPressed: () => helmetProvider.send('start'),
                   child: const Text('Start'),
                 ),
+                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => helmet.send("pause"),
+                  onPressed: () => helmetProvider.send('pause'),
                   child: const Text('Pause'),
                 ),
+                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => helmet.send("stop"),
+                  onPressed: () => helmetProvider.send('stop'),
                   child: const Text('Stop'),
                 ),
               ],
@@ -45,3 +53,4 @@ class HelmetControlScreen extends StatelessWidget {
     );
   }
 }
+
