@@ -10,24 +10,19 @@ class HelmetControlScreen extends StatelessWidget {
     final helmetProvider = Provider.of<HelmetProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Helmet Control'),
-      ),
+      appBar: AppBar(title: const Text("Helmet Control")),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Connection: ${helmetProvider.connectionStatus}',
-                style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 10),
-            Text('Last Command: ${helmetProvider.lastCommand}',
-                style: const TextStyle(fontSize: 18)),
-            const SizedBox(height: 30),
+            Text('Connection: ${helmetProvider.connectionStatus}'),
+            Text('Last Command: ${helmetProvider.lastCommand}'),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: () => helmetProvider.send('pair'),
+                  onPressed: helmetProvider.connect,
                   child: const Text('Pair'),
                 ),
                 const SizedBox(width: 10),
@@ -53,4 +48,3 @@ class HelmetControlScreen extends StatelessWidget {
     );
   }
 }
-
