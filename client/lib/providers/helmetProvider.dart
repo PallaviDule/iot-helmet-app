@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import '../services/websocket_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../services/websocket_service.dart';
+
+enum ProgramState { idle, running, paused }
 
 class HelmetProvider with ChangeNotifier {
   final WebSocketService wsService;
+
   String connectionStatus = "Disconnected";
   String lastCommand = "None";
+  ProgramState programState = ProgramState.idle;
 
   HelmetProvider({required this.wsService});
 
@@ -19,6 +23,11 @@ class HelmetProvider with ChangeNotifier {
       if (data['status'] != null) {
         connectionStatus = data['status'];
         lastCommand = data['status'];
+
+        if (data['status'] == 'start') programState = ProgramState.running;
+        if (data['status'] == 'pause') programState = ProgramState.paused;
+        if (data['status'] == 'stop') programState = ProgramState.idle;
+
         notifyListeners();
       }
     }, onError: (error) {
@@ -30,11 +39,34 @@ class HelmetProvider with ChangeNotifier {
     });
   }
 
-  void send(String command) {
+  void sendCommand(String command) {
     wsService.sendCommand(command);
     lastCommand = command;
+
+    if (command == 'start') programState = ProgramState.running;
+    if (command == 'pause') programState = ProgramState.paused;
+    if (command == 'stop') programState = ProgramState.idle;
+
     notifyListeners();
-    logCommandToServer(command);
+
+    // Send to Node.js server
+    _sendToServer(command);
+  }
+
+  Future<void> _sendToServer(String command) async {
+    final url = Uri.parse('http://localhost:3000/command');
+    final payload = {
+      "user": "user123",
+      "command": command,
+      "timestamp": DateTime.now().toIso8601String()
+    };
+    try {
+      await http.post(url,
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(payload));
+    } catch (e) {
+      print("Error sending command to server: $e");
+    }
   }
 
   void disconnect() {
@@ -42,26 +74,4 @@ class HelmetProvider with ChangeNotifier {
     connectionStatus = "Disconnected";
     notifyListeners();
   }
-
-  Future<void> logCommandToServer(String command) async {
-  final url = Uri.parse('http://localhost:3000/command');
-  final payload = {
-    "user": "user123",
-    "command": command,
-    "timestamp": DateTime.now().toUtc().toIso8601String(),
-  };
-
-  try {
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(payload),
-    );
-    if (response.statusCode != 200) {
-      print("Failed to log command: ${response.body}");
-    }
-  } catch (e) {
-    print("Error logging command: $e");
-  }
-}
 }
