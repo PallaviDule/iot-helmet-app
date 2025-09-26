@@ -1,28 +1,40 @@
-const express = require("express");
-const cors = require("cors");
-
+const express = require('express');
 const app = express();
-app.use(cors());
+const port = 3000;
+
 app.use(express.json());
 
+let sessionData = [];
 
-const PORT = process.env.PORT || 3000;
-let latestData = [];
-app.post("/iot-data", (req, res) => {
-  latestData.push(req.body);
-  console.log("Received IoT data:", latestData);
-  res.status(200).send({ message: "Data received" });
-});
+app.post('/command', (req, res) => {
+  const { user, command, timestamp } = req.body;
 
-// Flutter client fetches data here
-app.get("/iot-data", (req, res) => {
-  if (!latestData) {
-    return res.status(404).send({ message: "No data yet" });
+  if (!command || !timestamp) {
+    return res.status(400).json({ error: 'Missing required fields: command and timestamp' });
   }
-  res.send(latestData);
+
+  const validCommands = ['pair', 'start', 'pause', 'stop', 'continue'];
+  if (!validCommands.includes(command)) {
+    return res.status(400).json({ error: 'Invalid command' });
+  }
+
+  sessionData.push({
+    user: user || 'anonymous',
+    command,
+    timestamp
+  });
+
+  res.status(200).json({ status: 'Command logged successfully' });
 });
 
+app.get('/sessions', (req, res) => {
+  res.status(200).json(sessionData);
+});
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
 });
