@@ -1,43 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/websocket_service.dart';
+import '../providers/helmetProvider.dart';
 
 class HelmetControlScreen extends StatelessWidget {
   const HelmetControlScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final wsService = Provider.of<WebSocketService>(context);
+    final helmet = Provider.of<HelmetProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Helmet Control")),
+      appBar: AppBar(title: Text("Helmet Control")),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Connection: ${wsService.connected ? "Connected" : "Disconnected"}'),
-            Text('Last Command: ${wsService.lastCommand}'),
+            Text('Connection: ${helmet.connectionStatus}'),
+            Text('Last Command: ${helmet.lastCommand}'),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 10,
               children: [
                 ElevatedButton(
-                  onPressed: () => wsService.sendCommand('pair'),
+                  onPressed: helmet.connect,
                   child: const Text('Pair'),
                 ),
-                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => wsService.sendCommand('start'),
+                  onPressed: () => helmet.send("start"),
                   child: const Text('Start'),
                 ),
-                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => wsService.sendCommand('pause'),
+                  onPressed: () => helmet.send("pause"),
                   child: const Text('Pause'),
                 ),
-                const SizedBox(width: 10),
                 ElevatedButton(
-                  onPressed: () => wsService.sendCommand('stop'),
+                  onPressed: () => helmet.send("stop"),
                   child: const Text('Stop'),
                 ),
               ],
