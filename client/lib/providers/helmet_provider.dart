@@ -1,30 +1,72 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/websocket_service.dart';
+import '../services/api_service.dart';
+
+enum ProgramState { idle, running, paused }
 
 class HelmetProvider with ChangeNotifier {
   final WebSocketService wsService;
-  String connectionStatus = "Disconnected";
+  final ApiService apiService;
+  final String user;
 
+  String connectionStatus = "Disconnected";
+  String lastCommand = "None";
+  ProgramState programState = ProgramState.idle;
+
+  Timer? _autoStopTimer;
   int retryCount = 0;
   final int maxRetries = 3;
 
-  HelmetProvider({required this.wsService});
+  HelmetProvider({
+    required this.wsService, 
+    required this.apiService,
+    required this.user,
+  });
 
+  /// Connect and pair with device
   void connect() {
     connectionStatus = "Connecting...";
     notifyListeners();
 
     wsService.connect();
 
-    // Listen to WebSocket messages
-    wsService.stream.listen((data) {
-      if (data['status'] != null) {
-        // If pair succeeded
-        if (data['status'] == "connected") {
-          connectionStatus = "Connected";
-          notifyListeners();
+    wsService.stream.listen((data) async{
+      final status = data['status'];
+      if (status != null) {
+        const realCommands = ['pair', 'start', 'pause', 'stop', 'continue'];
+        if (realCommands.contains(status)) {
+          lastCommand = status;
+          await apiService.logCommand(user: user, command: status);
         }
+        // Update program state
+        switch (data['status']) {
+          case 'connected':
+            connectionStatus = "Connected";
+            break;
+          case 'start':
+            programState = ProgramState.running;
+            _startAutoStopTimer();
+            break;
+          case 'pause':
+            programState = ProgramState.paused;
+            _autoStopTimer?.cancel();
+            print('Paused, auto-stop timer cancelled');
+            break;
+          case 'continue':
+            programState = ProgramState.running;
+            _startAutoStopTimer();
+            break;
+          case 'stop':
+            programState = ProgramState.idle;
+            _autoStopTimer?.cancel();
+            break;
+          default:
+            break;
+        }
+
+        retryCount = 0;
+        notifyListeners();
       }
     }, onError: (error) {
       connectionStatus = "Error";
@@ -34,25 +76,70 @@ class HelmetProvider with ChangeNotifier {
       notifyListeners();
     });
 
-    // Send pair command
-    _sendPairCommand();
+    _sendCommandWithRetry("pair");
   }
 
-  void _sendPairCommand() {
-    wsService.sendCommand("pair");
+  /// Send command with retry mechanism
+  void _sendCommandWithRetry(String command) {
+    if (retryCount >= maxRetries) return;
 
-    // Retry mechanism if not connected after 2 seconds
+    wsService.sendCommand(command);
+    lastCommand = command;
+    notifyListeners();
+
     Timer(Duration(seconds: 2), () {
-      if (connectionStatus != "Connected" && retryCount < maxRetries) {
+      // Retry if connection or command not updated
+      if ((command == "pair" && connectionStatus != "Connected") ||
+          lastCommand == command && retryCount < maxRetries) {
         retryCount++;
-        _sendPairCommand();
+        _sendCommandWithRetry(command);
       }
+    });
+  }
+
+  void sendCommand(String command) {
+    if (connectionStatus != "Connected") return; // only send if connected
+
+    wsService.sendCommand(command);
+    lastCommand = command;
+    notifyListeners();
+
+    // Update program state locally for immediate feedback
+    switch (command) {
+      case 'start':
+        programState = ProgramState.running;
+        _startAutoStopTimer();
+        break;
+      case 'pause':
+        programState = ProgramState.paused;
+        _autoStopTimer?.cancel();
+        break;
+      case 'stop':
+        programState = ProgramState.idle;
+        _autoStopTimer?.cancel();
+        break;
+      case 'continue':
+        programState = ProgramState.running;
+        _startAutoStopTimer();
+        break;
+    }
+
+    notifyListeners();
+    apiService.logCommand(user: user, command: command);
+  }
+
+  void _startAutoStopTimer() {
+    _autoStopTimer?.cancel();
+    _autoStopTimer = Timer(Duration(seconds: 60), () {
+      sendCommand('stop');
     });
   }
 
   void disconnect() {
     wsService.disconnect();
     connectionStatus = "Disconnected";
+    programState = ProgramState.idle;
+    _autoStopTimer?.cancel();
     notifyListeners();
   }
 }

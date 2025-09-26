@@ -22,6 +22,9 @@ class WebSocketService {
   }
 
   Stream<Map<String, dynamic>> get stream {
+    if (_channel == null) {
+      return Stream.empty();
+    }
     return _channel!.stream.map((event) => jsonDecode(event));
   }
 }

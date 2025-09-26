@@ -17,6 +17,7 @@ class ApiService {
       "timestamp": DateTime.now().toUtc().toIso8601String()
     };
 
+    print("sendCommand called with $command at ${DateTime.now()}");
     try {
       final response = await http.post(
         url,

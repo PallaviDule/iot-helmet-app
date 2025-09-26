@@ -1,8 +1,10 @@
 const express = require('express');
 const app = express();
 const port = 3000;
+const cors = require('cors');
 
 app.use(express.json());
+app.use(cors());
 
 let sessionData = [];
 
@@ -15,7 +17,7 @@ app.post('/command', (req, res) => {
 
   const validCommands = ['pair', 'start', 'pause', 'stop', 'continue'];
   if (!validCommands.includes(command)) {
-    return res.status(400).json({ error: 'Invalid command' });
+    return res.status(400).json({ error: `Invalid command: ${command}` });
   }
 
   sessionData.push({
