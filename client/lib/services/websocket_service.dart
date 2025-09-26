@@ -1,15 +1,30 @@
-import 'dart:async';
-import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dart:convert';
 
-class WebSocketService {
-  final String url;
-  WebSocketChannel? _channel;
+class WebSocketService extends ChangeNotifier {
+  late WebSocketChannel? _channel;
+  bool connected = false;
+  String lastCommand = "None";
 
-  WebSocketService({required this.url});
-
-  void connect() {
+  void connect(String url) {
     _channel = WebSocketChannel.connect(Uri.parse(url));
+
+    _channel!.stream.listen((message) {
+      final data = jsonDecode(message);
+      final status = data['status'];
+      if (status != null) {
+        connected = (status == 'connected' || status == 'start' || status == 'pause' || status == 'stop');
+        lastCommand = status;
+        notifyListeners(); // Update UI
+      }
+    }, onDone: () {
+      connected = false;
+      notifyListeners();
+    }, onError: (error) {
+      connected = false;
+      notifyListeners();
+    });
   }
 
   void sendCommand(String command) {
@@ -18,9 +33,9 @@ class WebSocketService {
     }
   }
 
-  Stream get stream => _channel!.stream;
-
   void disconnect() {
     _channel?.sink.close();
+    connected = false;
+    notifyListeners();
   }
 }
